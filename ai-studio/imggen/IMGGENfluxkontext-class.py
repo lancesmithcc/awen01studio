@@ -47,7 +47,7 @@ class IMGGENfluxkontext(BaseModelAdapter):
         self._pipeline: Optional["FluxKontextPipeline"] = None
         self._force_mock = os.getenv("AWEN_FLUX_FAKE", "0") == "1"
         self._max_res = int(os.getenv("AWEN_FLUX_MAX_RES", "1440"))
-        self._default_steps = int(os.getenv("AWEN_FLUX_STEPS", "20"))  # Reduced from 28 for faster generation
+        self._default_steps = int(os.getenv("AWEN_FLUX_STEPS", "28"))  # FLUX default is 28, minimum is typically 4
         self._default_guidance = float(os.getenv("AWEN_FLUX_GUIDANCE", "3.5"))
         self._use_mock = False
 
@@ -135,6 +135,9 @@ class IMGGENfluxkontext(BaseModelAdapter):
         steps_value = payload.get("steps")
         guidance_value = payload.get("guidance_scale")
         steps = int(steps_value) if steps_value is not None else self._default_steps
+        # FLUX Kontext requires steps to be within valid range (typically 4-50)
+        # Ensure steps is at least 4 and doesn't exceed scheduler limits
+        steps = max(4, min(steps, 50))
         guidance = float(guidance_value) if guidance_value is not None else self._default_guidance
         
         # Handle reference image for image-to-image generation
@@ -184,8 +187,9 @@ class IMGGENfluxkontext(BaseModelAdapter):
                 if ref_img.size != (width, height):
                     ref_img = ref_img.resize((width, height), Image.Resampling.LANCZOS)
                 
+                # FLUX Kontext uses 'image' parameter for image conditioning
+                # Note: FLUX Kontext doesn't support 'strength' parameter
                 pipeline_kwargs["image"] = ref_img
-                pipeline_kwargs["strength"] = image_strength
             
             with torch.inference_mode():
                 result = self._pipeline(**pipeline_kwargs)

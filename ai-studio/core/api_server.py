@@ -11,9 +11,11 @@ import struct
 import time
 import uuid
 import hashlib
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type
+from enum import Enum
 
 from dotenv import load_dotenv
 from flask import (
@@ -320,6 +322,66 @@ def create_app() -> Flask:
     # Create knowledge directory
     knowledge_dir = data_dir / "knowledge"
     knowledge_dir.mkdir(parents=True, exist_ok=True)
+
+    # Background job system for long-running image generation tasks
+    class JobStatus(Enum):
+        PENDING = "pending"
+        PROCESSING = "processing"
+        COMPLETED = "completed"
+        FAILED = "failed"
+    
+    image_jobs: Dict[str, Dict[str, Any]] = {}
+    image_jobs_lock = threading.Lock()
+    
+    def run_image_generation_job(job_id: str, adapter_key: str, adapter_payload: Dict[str, Any], req_model: ImageGenerationRequest) -> None:
+        """Run image generation in background thread."""
+        with image_jobs_lock:
+            image_jobs[job_id]["status"] = JobStatus.PROCESSING.value
+        
+        try:
+            adapter = registry.get(adapter_key)
+            logger.info("Starting background image generation job %s: %s", job_id, req_model.prompt[:100])
+            
+            adapter_result = adapter.infer(adapter_payload)
+            logger.info("Image generation job %s completed successfully", job_id)
+            
+            size_str = req_model.size
+            if adapter_result.get("width") and adapter_result.get("height"):
+                size_str = f"{adapter_result['width']}x{adapter_result['height']}"
+            b64_payload = adapter_result.get("b64_json") or _text_to_b64(f"{req_model.prompt}|{size_str}")
+            
+            # Save to session
+            session_manager.save_entry(
+                {
+                    "modality": "imggen",
+                    "model": req_model.model,
+                    "prompt": req_model.prompt,
+                    "size": size_str,
+                    "timestamp": time.time(),
+                }
+            )
+            
+            with image_jobs_lock:
+                image_jobs[job_id] = {
+                    "status": JobStatus.COMPLETED.value,
+                    "result": {
+                        "b64_json": b64_payload,
+                        "width": adapter_result.get("width"),
+                        "height": adapter_result.get("height"),
+                        "mime_type": adapter_result.get("mime_type", "image/png"),
+                        "prompt": req_model.prompt,
+                        "size": size_str,
+                    },
+                    "created": int(time.time()),
+                }
+        except Exception as exc:
+            logger.error("Image generation job %s failed: %s", job_id, exc, exc_info=True)
+            with image_jobs_lock:
+                image_jobs[job_id] = {
+                    "status": JobStatus.FAILED.value,
+                    "error": str(exc),
+                    "created": int(time.time()),
+                }
 
     def json_abort(status_code: int, detail: Any) -> None:
         response = jsonify({"detail": detail})
@@ -820,21 +882,50 @@ def create_app() -> Flask:
             json_abort(404, str(exc))
 
         extra_payload = request.get_json(silent=True) or {}
+        
+        # Check if async/polling is requested
+        use_async = extra_payload.get("async", False)
+        
+        adapter_payload = {
+            "prompt": req_model.prompt,
+            "negative_prompt": req_model.negative_prompt,
+            "size": req_model.size,
+            "guidance_scale": extra_payload.get("guidance_scale"),
+            "steps": extra_payload.get("steps"),
+        }
+        
+        # Add reference image if provided
+        if req_model.image:
+            adapter_payload["image"] = req_model.image
+            adapter_payload["image_strength"] = req_model.image_strength or 0.8
+        
+        # Use async job system for long-running generations
+        if use_async:
+            job_id = str(uuid.uuid4())
+            with image_jobs_lock:
+                image_jobs[job_id] = {
+                    "status": JobStatus.PENDING.value,
+                    "created": int(time.time()),
+                }
+            
+            # Start background thread
+            thread = threading.Thread(
+                target=run_image_generation_job,
+                args=(job_id, adapter_key, adapter_payload, req_model),
+                daemon=True
+            )
+            thread.start()
+            
+            # Return job ID immediately
+            return jsonify({
+                "job_id": job_id,
+                "status": "pending",
+                "message": "Image generation started. Poll /v1/images/generations/{job_id} for status."
+            })
+        
+        # Synchronous generation (for quick tests or local use)
         try:
-            logger.info("Starting image generation for prompt: %s", req_model.prompt[:100])
-            adapter_payload = {
-                "prompt": req_model.prompt,
-                "negative_prompt": req_model.negative_prompt,
-                "size": req_model.size,
-                "guidance_scale": extra_payload.get("guidance_scale"),
-                "steps": extra_payload.get("steps"),
-            }
-            
-            # Add reference image if provided
-            if req_model.image:
-                adapter_payload["image"] = req_model.image
-                adapter_payload["image_strength"] = req_model.image_strength or 0.8
-            
+            logger.info("Starting synchronous image generation for prompt: %s", req_model.prompt[:100])
             adapter_result = adapter.infer(adapter_payload)
             logger.info("Image generation completed successfully")
         except RuntimeError as exc:
@@ -872,6 +963,40 @@ def create_app() -> Flask:
         flask_response.headers["X-Accel-Buffering"] = "no"  # Disable buffering
         flask_response.headers["Connection"] = "keep-alive"
         return flask_response
+    
+    @app.route("/v1/images/generations/<job_id>", methods=["GET"])
+    def get_image_generation_status(job_id: str) -> Response:
+        """Get status of an async image generation job."""
+        enforce_token()
+        with image_jobs_lock:
+            job = image_jobs.get(job_id)
+        
+        if not job:
+            json_abort(404, f"Job {job_id} not found")
+        
+        if job["status"] == JobStatus.COMPLETED.value:
+            # Return the image result
+            response = ImageGenerationResponse(
+                created=job.get("created", int(time.time())),
+                data=[
+                    ImageDatum(
+                        b64_json=job["result"]["b64_json"],
+                        prompt=job["result"]["prompt"],
+                        size=job["result"]["size"],
+                        mime_type=job["result"].get("mime_type", "image/png"),
+                    )
+                ],
+            )
+            return jsonify(response.model_dump())
+        elif job["status"] == JobStatus.FAILED.value:
+            json_abort(500, job.get("error", "Image generation failed"))
+        
+        # Still processing or pending - return status
+        return jsonify({
+            "job_id": job_id,
+            "status": job["status"],
+            "message": "Image generation in progress..."
+        })
 
     @app.route("/v1/vision/analyze", methods=["POST"])
     def vision_analyze() -> Response:

@@ -300,6 +300,10 @@
         line-height: 1.5;
         color: #a8f5e8;
         white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: normal;
+        hyphens: none;
         padding-top: 1rem;
         font-family: "Jost", sans-serif;
         display: none;
@@ -310,7 +314,9 @@
       }
       .response .char {
         position: relative;
-        display: inline-block;
+        display: inline;
+        word-break: normal;
+        white-space: normal;
       }
       .response .char.shimmer {
         animation: shimmer 2s infinite;
@@ -1078,7 +1084,13 @@
                 const char = chars[charIdx + i];
                 const charSpan = document.createElement("span");
                 charSpan.className = "char shimmer";
-                charSpan.textContent = char === " " ? "\u00A0" : char;
+                // Preserve spaces and prevent word breaking
+                if (char === " ") {
+                  charSpan.textContent = "\u00A0"; // Non-breaking space
+                  charSpan.style.whiteSpace = "pre";
+                } else {
+                  charSpan.textContent = char;
+                }
                 textSpan.appendChild(charSpan);
                 
                 setTimeout(() => {
@@ -1181,7 +1193,13 @@
             const char = chars[charIndex + i];
             const span = document.createElement("span");
             span.className = "char shimmer";
-            span.textContent = char === " " ? "\u00A0" : char;
+            // Preserve spaces and prevent word breaking
+            if (char === " ") {
+              span.textContent = "\u00A0"; // Non-breaking space
+              span.style.whiteSpace = "pre";
+            } else {
+              span.textContent = char;
+            }
             textResponse.appendChild(span);
             
             setTimeout(() => {
@@ -1230,13 +1248,14 @@
         textResponse.innerHTML = '<span class="char">Generating image... This may take a minute.</span>';
         textResponse.style.display = "block";
 
-        // FLUX defaults: optimized for faster generation
+        // FLUX defaults: use recommended 28 steps (FLUX default, minimum 4)
         const body = { 
           model: "flux", 
           prompt, 
           size: "1024x1024",
-          steps: 20,  // Reduced steps for faster generation
-          guidance_scale: 3.5  // FLUX default guidance
+          steps: 28,  // FLUX default steps (minimum 4, typically 20-50)
+          guidance_scale: 3.5,  // FLUX default guidance
+          async: true  // Use async job system to avoid Cloudflare timeouts
         };
         
         // Add reference image if provided (convert data URL to base64)
@@ -1250,46 +1269,100 @@
         }
 
         try {
-          // Create an AbortController for timeout handling
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout for FLUX
-          
-          const res = await fetch("/v1/images/generations", {
+          // Start async job - returns immediately with job_id
+          const startRes = await fetch("/v1/images/generations", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${AUTH_TOKEN}`
             },
-            body: JSON.stringify(body),
-            signal: controller.signal
+            body: JSON.stringify(body)
           });
           
-          clearTimeout(timeoutId);
+          if (!startRes.ok) {
+            const err = await startRes.text();
+            throw new Error(err || `${startRes.status} ${startRes.statusText}`);
+          }
           
-          if (!res.ok) {
-            const err = await res.text();
-            throw new Error(err || `${res.status} ${res.statusText}`);
+          const startData = await startRes.json();
+          const jobId = startData.job_id;
+          
+          if (!jobId) {
+            throw new Error("No job_id returned from server");
           }
-          const data = await res.json();
-          const img = data.data?.[0];
-          if (img?.b64_json) {
-            const mime = img.mime_type || "image/png";
-            imageOutput.src = `data:${mime};base64,${img.b64_json}`;
-            imageWrapper.classList.add("show");
-            textResponse.style.display = "none"; // Hide loading message
-            textResponse.innerHTML = "";
-          } else {
-            throw new Error("No image returned");
-          }
+          
+          // Poll for job completion
+          const pollInterval = 2000; // Poll every 2 seconds
+          const maxPollTime = 900000; // Max 15 minutes
+          const startTime = Date.now();
+          
+          const pollForResult = async () => {
+            try {
+              const pollRes = await fetch(`/v1/images/generations/${jobId}`, {
+                headers: {
+                  Authorization: `Bearer ${AUTH_TOKEN}`
+                }
+              });
+              
+              if (!pollRes.ok) {
+                if (pollRes.status === 404) {
+                  throw new Error("Job not found");
+                }
+                const err = await pollRes.text();
+                throw new Error(err || `${pollRes.status} ${pollRes.statusText}`);
+              }
+              
+              const pollData = await pollRes.json();
+              
+              // Check if response is ImageGenerationResponse format (completed) or status format
+              if (pollData.data?.[0]?.b64_json) {
+                // Job completed successfully - ImageGenerationResponse format
+                const img = pollData.data[0];
+                const mime = img.mime_type || "image/png";
+                imageOutput.src = `data:${mime};base64,${img.b64_json}`;
+                imageWrapper.classList.add("show");
+                textResponse.style.display = "none";
+                textResponse.innerHTML = "";
+                actionBtn.disabled = false;
+                isGenerating = false;
+                document.body.classList.remove("generating");
+                actionBtn.classList.remove("pulsating");
+              } else if (pollData.status === "failed" || pollRes.status === 500) {
+                throw new Error(pollData.detail || pollData.message || "Image generation failed");
+              } else if (pollData.status === "processing" || pollData.status === "pending") {
+                // Still processing - update loading message
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                textResponse.innerHTML = `<span class="char">Generating image... ${elapsed}s elapsed. This may take several minutes.</span>`;
+                
+                // Check timeout
+                if (Date.now() - startTime > maxPollTime) {
+                  throw new Error("Image generation timed out after 15 minutes");
+                }
+                
+                // Poll again
+                setTimeout(pollForResult, pollInterval);
+              } else {
+                // Unknown status - poll again
+                setTimeout(pollForResult, pollInterval);
+              }
+            } catch (error) {
+              textResponse.style.display = "block";
+              textResponse.innerHTML = `<span class="char">${error.message || "Image generation error"}</span>`;
+              imageWrapper.classList.remove("show");
+              actionBtn.disabled = false;
+              isGenerating = false;
+              document.body.classList.remove("generating");
+              actionBtn.classList.remove("pulsating");
+            }
+          };
+          
+          // Start polling
+          setTimeout(pollForResult, pollInterval);
+          
         } catch (error) {
           textResponse.style.display = "block";
-          if (error.name === 'AbortError') {
-            textResponse.innerHTML = '<span class="char">Image generation timed out. FLUX generation can take 2-5 minutes. Please try again with a simpler prompt or smaller size.</span>';
-          } else {
-            textResponse.innerHTML = `<span class="char">${error.message || "Image generation error"}</span>`;
-          }
+          textResponse.innerHTML = `<span class="char">${error.message || "Image generation error"}</span>`;
           imageWrapper.classList.remove("show");
-        } finally {
           actionBtn.disabled = false;
           isGenerating = false;
           document.body.classList.remove("generating");
