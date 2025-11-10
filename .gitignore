@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Data and models (large files)
+ai-studio/data/*.awe
+ai-studio/data/knowledge/*
+!ai-studio/data/knowledge/.gitkeep
+ai-studio/models/**/*
+!ai-studio/models/**/.gitkeep
+
+# Logs
+*.log
+/tmp/
+
+# Server logs
+/tmp/awen_server.log
+/tmp/cloudflared.log
+
+# Cloudflare tunnel config (contains credentials)
+.cloudflared/config.yml
+.cloudflared/*.json
+
+# Settings with sensitive data
+settings_local.json
+
+# Python cache
+*.pyc
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage
+.coverage
+htmlcov/
+

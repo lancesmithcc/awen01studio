@@ -1,0 +1,53 @@
+[project]
+name = "awen01-studio"
+version = "0.1.0"
+description = "Offline-first, Kyber-encrypted AI workstation."
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["awen01", "ai-studio", "fastapi", "kyber"]
+license = { text = "Proprietary" }
+dependencies = [
+    "flask>=3.0.0",
+    "pydantic>=2.7.1",
+    "cryptography>=42.0.5",
+    "argon2-cffi>=23.1.0",
+    "orjson>=3.10.0",
+    "python-dotenv>=1.0.1",
+    "rich>=13.7.1",
+    "llama-cpp-python>=0.2.90",
+    "huggingface-hub>=0.31.0",
+    "torch>=2.3.0",
+    "diffusers>=0.30.0",
+    "transformers>=4.41.2",
+    "accelerate>=0.31.0",
+    "safetensors>=0.4.2",
+    "pillow>=10.3.0",
+    "sentencepiece>=0.2.0",
+    "psycopg2-binary>=2.9.9",
+    "sentence-transformers>=2.3.1",
+    "pytesseract>=0.3.10",
+    "pdf2image>=1.16.3",
+    "PyPDF2>=3.0.1",
+    "openai-whisper>=20231117"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+    "ruff>=0.4.1",
+    "black>=24.4.0"
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I", "B", "Q", "UP", "ASYNC", "ANN", "C4"]
+ignore = ["ANN101", "ANN102"]

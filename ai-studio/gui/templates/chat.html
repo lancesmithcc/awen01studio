@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AWEN01</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        font-family: "Jost", sans-serif;
+      }
+      :root {
+        color-scheme: dark;
+        font-family: "Jost", sans-serif;
+        background: #0a1a1a;
+        color: #b8ffe8;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        box-sizing: border-box;
+        position: relative;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      #flower-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .panel {
+        width: min(888px, 100%);
+        min-width: 420px;
+        background: transparent;
+        border: none;
+        padding: 2rem;
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .header-row {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        right: 0;
+        padding: 1rem 2rem;
+        box-sizing: border-box;
+        z-index: 10;
+        pointer-events: auto;
+      }
+      .header-links {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+      }
+      .header-link {
+        color: #6dd4a8;
+        text-decoration: none;
+        font-size: 0.9rem;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+        pointer-events: auto;
+      }
+      .header-link:hover {
+        opacity: 1;
+      }
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      }
+      .title-section {
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        letter-spacing: 0.2rem;
+        text-transform: lowercase;
+        font-family: "Jost", sans-serif;
+        color: #a8f5e8;
+      }
+      .title-section h1 {
+        margin: 0;
+      }
+      .gear {
+        text-decoration: none;
+        color: #6dd4a8;
+        font-size: 1.5rem;
+        font-family: "Jost", sans-serif;
+      }
+      .controls-row {
+        display: flex !important;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        visibility: visible !important;
+        opacity: 1 !important;
+        min-height: 28px;
+      }
+      .control-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s ease;
+      }
+      #upload-image-btn {
+        width: auto !important;
+        height: auto !important;
+        min-width: 120px;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.875rem;
+        color: #b8ffe8;
+        border: 1px solid #333;
+        border-radius: 8px;
+        background: rgba(17, 17, 17, 0.8);
+      }
+      #upload-image-btn:hover {
+        background: rgba(51, 51, 51, 0.8);
+        border-color: #0f0;
+      }
+      .control-btn:hover {
+        transform: scale(1.05);
+      }
+      .control-btn img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+        opacity: 0.7;
+        transition: opacity 0.2s;
+        display: block;
+      }
+      .control-btn:hover img {
+        opacity: 1;
+      }
+      .control-btn.active img {
+        opacity: 1;
+        filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(120deg);
+      }
+      /* Sound button inherits from control-btn, just ensure it's visible */
+      .sound-btn,
+      #sound-toggle {
+        width: 28px !important;
+        height: 28px !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      .sound-btn img,
+      #sound-icon {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
+        filter: brightness(0) invert(1) !important;
+        opacity: 0.7 !important;
+        display: block !important;
+        visibility: visible !important;
+      }
+      .sound-btn.active img,
+      .sound-btn.active #sound-icon,
+      #sound-toggle.active #sound-icon {
+        opacity: 1 !important;
+        filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(120deg) !important;
+      }
+      .input-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        position: relative;
+        width: 100%;
+      }
+      input {
+        width: 100%;
+        min-width: 420px;
+        max-width: 888px;
+        border: 2px solid #333;
+        background: #111;
+        color: inherit;
+        font-size: 1.1rem;
+        padding: 0.75rem;
+        border-radius: 12px;
+        outline: none;
+        font-family: "Jost", sans-serif;
+      }
+      #mic-btn {
+        width: 44px;
+        height: 44px;
+        border: none;
+        background: transparent;
+        padding: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+      }
+      #mic-btn:hover:not(:disabled) {
+        transform: scale(1.05);
+      }
+      #mic-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+      #mic-btn.recording {
+        animation: pulse-red 1s ease-in-out infinite;
+      }
+      @keyframes pulse-red {
+        0%, 100% {
+          transform: scale(1);
+          filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(0deg);
+        }
+        50% {
+          transform: scale(1.1);
+          filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(0deg) brightness(1.2);
+        }
+      }
+      #mic-btn img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(120deg);
+        display: block;
+      }
+      #action-btn {
+        width: 44px;
+        height: 44px;
+        border: none;
+        background: transparent;
+        padding: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+      }
+      #action-btn:hover {
+        transform: scale(1.05);
+      }
+      #action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+      #action-btn.pulsating {
+        animation: pulsate 1s ease-in-out infinite;
+      }
+      @keyframes pulsate {
+        0%, 100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.15);
+        }
+      }
+      #action-btn img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(120deg);
+      }
+      .status {
+        display: none;
+      }
+      .response {
+        margin-top: 2rem;
+        min-height: 0;
+        overflow: visible;
+        font-size: 1.05rem;
+        line-height: 1.5;
+        color: #a8f5e8;
+        white-space: pre-wrap;
+        padding-top: 1rem;
+        font-family: "Jost", sans-serif;
+        display: none;
+      }
+      .response:not(:empty) {
+        display: block;
+        min-height: 140px;
+      }
+      .response .char {
+        position: relative;
+        display: inline-block;
+      }
+      .response .char.shimmer {
+        animation: shimmer 2s infinite;
+      }
+      @keyframes shimmer {
+        0%, 100% {
+          color: #a8f5e8;
+          text-shadow: 0 0 0 rgba(0, 255, 170, 0);
+        }
+        50% {
+          color: #b8ffe8;
+          text-shadow: 0 0 8px rgba(0, 255, 170, 0.6);
+        }
+      }
+      .image-preview {
+        margin-top: 1rem;
+        min-height: 220px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed #2a5a5a;
+        border-radius: 12px;
+        padding: 0.5rem;
+      }
+      .image-preview.show {
+        display: flex;
+      }
+      .image-preview img {
+        max-width: 100%;
+        border-radius: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="flower-canvas"></canvas>
+    <div class="header-row">
+      <div class="header-links">
+        <a href="/knowledge" class="header-link" title="Knowledge">Knowledge</a>
+        <a href="/memory" class="header-link" title="Memory">Memory</a>
+        <a href="/tweak" class="header-link" title="Settings">⚙</a>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="main-content">
+        <div class="title-section">
+          <h1>what's your query?</h1>
+        </div>
+
+        <div class="input-row">
+          <input id="unified-input" placeholder="..." autofocus />
+          <button id="mic-btn" title="Record audio">
+            <img src="/icons/mic.svg" alt="Microphone" />
+          </button>
+          <button id="action-btn" title="Send">
+            <img src="/icons/send.svg" alt="Send" />
+          </button>
+        </div>
+        
+        <div class="controls-row">
+          <button class="control-btn mode-btn active" data-mode="text" title="Text mode">
+            <img src="/icons/text.svg" alt="Text" />
+          </button>
+          <button class="control-btn mode-btn" data-mode="image" title="Image mode">
+            <img src="/icons/art.svg" alt="Image" />
+          </button>
+          <input type="file" id="reference-image-input" accept="image/*" style="display: none;" />
+          <button class="control-btn" id="upload-image-btn" title="Upload reference image" style="display: none; padding: 0.5rem 0.75rem; font-size: 0.875rem;">
+            img ref
+          </button>
+          <button class="control-btn sound-btn active" id="sound-toggle" title="Toggle sound" style="display: flex !important; visibility: visible !important;">
+            <img src="/icons/sound.svg" alt="Sound on" id="sound-icon" style="display: block !important; visibility: visible !important;" />
+          </button>
+        </div>
+        <div id="reference-image-preview" style="display: none; margin-top: 0.5rem; max-width: 200px;">
+          <img id="reference-image-display" style="max-width: 100%; border-radius: 8px; border: 1px solid #333;" />
+          <button id="remove-reference-btn" style="margin-top: 0.25rem; padding: 0.25rem 0.5rem; background: #333; color: #0f0; border: none; border-radius: 4px; cursor: pointer;">Remove</button>
+        </div>
+      </div>
+      <div class="status" id="status"></div>
+
+      <div class="response" id="text-response"></div>
+      <div class="image-preview" id="image-wrapper">
+        <img id="image-output" alt="AWEN01 generation" />
+      </div>
+    </div>
+
+    <script>
+      const unifiedInput = document.getElementById("unified-input");
+      const actionBtn = document.getElementById("action-btn");
+      const statusEl = document.getElementById("status");
+      const textResponse = document.getElementById("text-response");
+      const imageWrapper = document.getElementById("image-wrapper");
+      const imageOutput = document.getElementById("image-output");
+      const modeButtons = document.querySelectorAll(".mode-btn");
+
+      const AUTH_TOKEN = "awen-local";
+      let mode = "text";
+      let typerTimer = null;
+      let isGenerating = false;
+      let soundEnabled = true; // Start with sound enabled
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let isRecording = false;
+      let referenceImage = null; // Store reference image for image-to-image generation
+
+      modeButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          modeButtons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          mode = btn.dataset.mode;
+          updateUIState();
+        });
+      });
+      
+      // Sound toggle
+      const soundToggle = document.getElementById("sound-toggle");
+      const soundIcon = document.getElementById("sound-icon");
+      
+      if (soundToggle && soundIcon) {
+        // Ensure it's visible
+        soundToggle.style.display = "flex";
+        soundToggle.style.visibility = "visible";
+        soundToggle.style.opacity = "1";
+        
+        soundToggle.addEventListener("click", () => {
+          soundEnabled = !soundEnabled;
+          
+          // Stop any currently playing audio if disabling sound
+          if (!soundEnabled) {
+            stopCurrentAudio();
+          }
+          
+          soundToggle.classList.toggle("active");
+          if (soundEnabled) {
+            soundIcon.src = "/icons/sound.svg";
+            soundIcon.alt = "Sound on";
+          } else {
+            soundIcon.src = "/icons/soundoff.svg";
+            soundIcon.alt = "Sound off";
+          }
+        });
+      }
+
+      // Microphone recording functionality
+      const micBtn = document.getElementById("mic-btn");
+      
+      // Detect supported audio MIME type
+      function getSupportedMimeType() {
+        const types = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/mp4',
+          'audio/m4a',
+          'audio/ogg;codecs=opus',
+          'audio/wav'
+        ];
+        
+        for (const type of types) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            console.log("Using audio MIME type:", type);
+            return type;
+          }
+        }
+        // Fallback - let browser choose
+        console.warn("No specific MIME type supported, using default");
+        return '';
+      }
+      
+      async function startRecording() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const mimeType = getSupportedMimeType();
+          const options = mimeType ? { mimeType } : {};
+          
+          mediaRecorder = new MediaRecorder(stream, options);
+          audioChunks = [];
+          
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              audioChunks.push(event.data);
+            }
+          };
+          
+          mediaRecorder.onerror = (event) => {
+            console.error("MediaRecorder error:", event.error);
+            alert("Recording error: " + event.error.message);
+            stopRecording();
+          };
+          
+          mediaRecorder.onstop = async () => {
+            if (audioChunks.length === 0) {
+              alert("No audio recorded. Please try again.");
+              stream.getTracks().forEach(track => track.stop());
+              return;
+            }
+            
+            // Determine blob type from MIME type or default to webm
+            const blobType = mimeType.split(';')[0] || 'audio/webm';
+            const audioBlob = new Blob(audioChunks, { type: blobType });
+            
+            console.log("Audio blob created:", {
+              size: audioBlob.size,
+              type: audioBlob.type
+            });
+            
+            if (audioBlob.size === 0) {
+              alert("Recorded audio is empty. Please try again.");
+              stream.getTracks().forEach(track => track.stop());
+              return;
+            }
+            
+            await transcribeAudio(audioBlob);
+            
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+          };
+          
+          mediaRecorder.start();
+          isRecording = true;
+          micBtn.classList.add("recording");
+          micBtn.title = "Stop recording";
+          console.log("Recording started with MIME type:", mimeType || "default");
+        } catch (error) {
+          console.error("Error accessing microphone:", error);
+          alert("Could not access microphone. Please check permissions.");
+          isRecording = false;
+          micBtn.classList.remove("recording");
+        }
+      }
+
+      function stopRecording() {
+        if (mediaRecorder && isRecording) {
+          mediaRecorder.stop();
+          isRecording = false;
+          micBtn.classList.remove("recording");
+          micBtn.title = "Record audio";
+        }
+      }
+
+      async function transcribeAudio(audioBlob) {
+        try {
+          console.log("Starting transcription, blob size:", audioBlob.size, "type:", audioBlob.type);
+          
+          // Show loading feedback
+          micBtn.disabled = true;
+          micBtn.title = "Transcribing...";
+          
+          const formData = new FormData();
+          formData.append('file', audioBlob, 'recording.webm');
+          formData.append('model', 'whisper');
+          
+          const response = await fetch('/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${AUTH_TOKEN}`
+            },
+            body: formData
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Transcription failed' }));
+            const errorMsg = errorData.detail || errorData.message || 'Transcription failed';
+            console.error("Transcription error response:", errorMsg);
+            throw new Error(errorMsg);
+          }
+          
+          const result = await response.json();
+          const transcribedText = result.text || '';
+          
+          console.log("Transcription result:", transcribedText);
+          
+          if (transcribedText) {
+            unifiedInput.value = transcribedText;
+            unifiedInput.focus();
+          } else {
+            alert("No speech detected. Please try again.");
+          }
+        } catch (error) {
+          console.error("Transcription error:", error);
+          alert(`Transcription failed: ${error.message}`);
+        } finally {
+          micBtn.disabled = false;
+          micBtn.title = "Record audio";
+        }
+      }
+
+      // Mic button click handler
+      if (micBtn) {
+        micBtn.addEventListener("click", () => {
+          if (isRecording) {
+            stopRecording();
+          } else {
+            startRecording();
+          }
+        });
+      }
+
+      function updateUIState() {
+        statusEl.textContent = "";
+        clearOutput();
+        // Show/hide reference image upload button based on mode
+        const uploadBtn = document.getElementById("upload-image-btn");
+        const referencePreview = document.getElementById("reference-image-preview");
+        if (uploadBtn) {
+          uploadBtn.style.display = mode === "image" ? "flex" : "none";
+        }
+        // Hide reference preview when switching away from image mode
+        if (referencePreview && mode !== "image") {
+          referencePreview.style.display = "none";
+          referenceImage = null;
+          const referenceImageInput = document.getElementById("reference-image-input");
+          if (referenceImageInput) referenceImageInput.value = "";
+        }
+      }
+      
+      // Reference image upload handling
+      const referenceImageInput = document.getElementById("reference-image-input");
+      const uploadImageBtn = document.getElementById("upload-image-btn");
+      const referenceImagePreview = document.getElementById("reference-image-preview");
+      const referenceImageDisplay = document.getElementById("reference-image-display");
+      const removeReferenceBtn = document.getElementById("remove-reference-btn");
+      
+      if (uploadImageBtn && referenceImageInput) {
+        uploadImageBtn.addEventListener("click", () => {
+          referenceImageInput.click();
+        });
+      }
+      
+      if (referenceImageInput) {
+        referenceImageInput.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (file && file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              referenceImage = event.target.result; // Store as data URL
+              if (referenceImageDisplay) {
+                referenceImageDisplay.src = referenceImage;
+                referenceImagePreview.style.display = "block";
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+      
+      if (removeReferenceBtn) {
+        removeReferenceBtn.addEventListener("click", () => {
+          referenceImage = null;
+          if (referenceImageInput) referenceImageInput.value = "";
+          if (referenceImagePreview) referenceImagePreview.style.display = "none";
+        });
+      }
+
+      function clearOutput() {
+        if (typerTimer) clearInterval(typerTimer);
+        textResponse.innerHTML = "";
+        accumulatedText = "";
+        renderedLength = 0; // Reset rendered length
+        imageWrapper.classList.remove("show");
+        imageOutput.removeAttribute("src");
+      }
+
+      async function handleSubmit() {
+        const prompt = unifiedInput.value.trim();
+        if (!prompt) return;
+        mode === "text" ? await sendChat(prompt) : await generateImage(prompt);
+      }
+
+      async function sendChat(prompt) {
+        const body = {
+          model: "tinyllama",
+          messages: [{ role: "user", content: prompt }],
+          stream: true
+        };
+        clearOutput();
+        actionBtn.disabled = true;
+        isGenerating = true;
+        document.body.classList.add("generating");
+        actionBtn.classList.add("pulsating");
+
+        try {
+          const response = await fetch("/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            },
+            body: JSON.stringify(body)
+          });
+          if (!response.ok && response.status !== 200) {
+            const err = await response.text();
+            throw new Error(err || `${response.status} ${response.statusText}`);
+          }
+          if (response.headers.get("content-type")?.includes("text/event-stream")) {
+            await streamResponse(response);
+          } else {
+            const data = await response.json();
+            typeText(data.choices?.[0]?.message?.content ?? "");
+          }
+        } catch (error) {
+          textResponse.innerHTML = `<span class="char">${error.message || "Error"}</span>`;
+        } finally {
+          actionBtn.disabled = false;
+          isGenerating = false;
+          document.body.classList.remove("generating");
+          actionBtn.classList.remove("pulsating");
+        }
+      }
+
+      async function speakText(text) {
+        if (!soundEnabled) {
+          return;
+        }
+        if (!text || text.trim().length === 0) {
+          return;
+        }
+        
+        // Clean text for TTS - remove markdown, extra whitespace
+        const cleanText = text.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
+        
+        if (!cleanText || cleanText.length < 1) {
+          return;
+        }
+        
+        try {
+          const response = await fetch("/v1/audio/speech", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            },
+            body: JSON.stringify({
+              model: "kokoro",
+              input: cleanText,
+              voice: "am_santa",
+              response_format: "pcm16"
+            })
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => "");
+            console.warn("TTS failed:", response.status, errorText);
+            return;
+          }
+          
+          // Check content type - should be audio/pcm, not application/json
+          const contentType = response.headers.get("Content-Type");
+          
+          if (contentType && contentType.includes("application/json")) {
+            // Got JSON error response instead of audio
+            const errorData = await response.json().catch(() => ({}));
+            console.error("TTS returned JSON error:", errorData);
+            return;
+          }
+          
+          // Get sample rate from headers
+          const sampleRate = parseInt(response.headers.get("X-Sample-Rate") || "22050");
+          
+          // Read as ArrayBuffer (raw PCM16 data)
+          const audioBuffer = await response.arrayBuffer();
+          
+          if (audioBuffer.byteLength < 100) {
+            console.warn("TTS audio too short:", audioBuffer.byteLength, "bytes");
+            return;
+          }
+          
+          // Get or create AudioContext
+          const ctx = initAudioContext();
+          
+          // Resume audio context if suspended (browser autoplay policy)
+          if (ctx.state === 'suspended') {
+            await ctx.resume();
+          }
+          
+          const source = ctx.createBufferSource();
+          
+          // Store reference to current audio source so we can stop it if needed
+          currentAudioSource = source;
+          
+          // Convert PCM16 to AudioBuffer
+          // Ensure we have an even number of bytes (PCM16 is 2 bytes per sample)
+          const numBytes = audioBuffer.byteLength - (audioBuffer.byteLength % 2);
+          const numSamples = Math.floor(numBytes / 2);
+          
+          const buffer = ctx.createBuffer(1, numSamples, sampleRate);
+          const channelData = buffer.getChannelData(0);
+          const dataView = new DataView(audioBuffer, 0, numBytes); // Use only the valid bytes
+          
+          for (let i = 0; i < numSamples; i++) {
+            const byteOffset = i * 2;
+            if (byteOffset + 2 <= numBytes) {
+              const sample = dataView.getInt16(byteOffset, true) / 32768.0;
+              channelData[i] = sample;
+            }
+          }
+          
+          // Normalize audio to prevent clipping and ensure audible volume
+          let maxSample = 0;
+          for (let i = 0; i < numSamples; i++) {
+            maxSample = Math.max(maxSample, Math.abs(channelData[i]));
+          }
+          
+          if (maxSample > 0) {
+            // Normalize to 0.8 to leave headroom and ensure volume
+            const normalizeFactor = 0.8 / maxSample;
+            for (let i = 0; i < numSamples; i++) {
+              channelData[i] *= normalizeFactor;
+            }
+          }
+          
+          // Add a gain node to control volume
+          const gainNode = ctx.createGain();
+          gainNode.gain.value = 1.0; // Full volume
+          
+          source.buffer = buffer;
+          source.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          
+          // Handle playback end
+          source.onended = () => {
+            currentAudioSource = null; // Clear reference when playback ends
+          };
+          
+          source.start(0);
+        } catch (error) {
+          // Silently handle TTS errors
+        }
+      }
+
+      async function streamResponse(response) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        isStreamingComplete = false;
+        
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            isStreamingComplete = true;
+            // Speak the final text when streaming is complete
+            const finalText = filterThinking(accumulatedText);
+            if (finalText.trim()) {
+              speakText(finalText);
+            }
+            break;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+          for (const part of parts) {
+            if (!part.startsWith("data:")) continue;
+            const payload = part.replace("data:", "").trim();
+            if (payload === "[DONE]") {
+              isStreamingComplete = true;
+              const finalText = filterThinking(accumulatedText);
+              if (finalText.trim()) {
+                speakText(finalText);
+              }
+              return;
+            }
+            try {
+              const json = JSON.parse(payload);
+              const delta = json.choices?.[0]?.delta?.content || "";
+              appendText(delta);
+            } catch {
+              /* ignore parse errors */
+            }
+          }
+        }
+      }
+
+      function filterThinking(text) {
+        if (!text) return "";
+        
+        // First, extract everything after the last </think> tag (DeepSeek R1 format)
+        if (text.includes('</think>')) {
+          const parts = text.split('</think>');
+          text = parts[parts.length - 1].trim();
+        }
+        
+        // Remove content between <think> and </think> tags
+        text = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+        
+        // Remove content between <think> and </think> tags
+        text = text.replace(/<think>[\s\S]*?<\/redacted_reasoning>/gi, "");
+        
+        // Remove content between <reasoning> and </reasoning> tags
+        text = text.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "");
+        
+        // Remove any remaining unclosed thinking tags (everything after)
+        text = text.replace(/<think>[\s\S]*$/gi, "");
+        text = text.replace(/<think>[\s\S]*$/gi, "");
+        text = text.replace(/<reasoning>[\s\S]*$/gi, "");
+        
+        // Remove thinking tags themselves
+        text = text.replace(/<\/?think>/gi, "");
+        text = text.replace(/<\/?redacted_reasoning>/gi, "");
+        text = text.replace(/<\/?reasoning>/gi, "");
+        
+        // Remove reasoning patterns in brackets
+        text = text.replace(/\[thinking[^\]]*\][\s\S]*?\[\/thinking\]/gi, "");
+        text = text.replace(/\[reasoning[^\]]*\][\s\S]*?\[\/reasoning\]/gi, "");
+        
+        // Remove any text that looks like thinking (lines starting with reasoning indicators)
+        const lines = text.split('\n');
+        const filteredLines = lines.filter(line => {
+          const trimmed = line.trim().toLowerCase();
+          return !trimmed.startsWith('thinking:') && 
+                 !trimmed.startsWith('reasoning:') &&
+                 !trimmed.startsWith('thought:') &&
+                 !trimmed.startsWith('considering:') &&
+                 !trimmed.startsWith('[thinking]') &&
+                 !trimmed.startsWith('[reasoning]') &&
+                 !trimmed.match(/^<think/i) &&
+                 !trimmed.match(/^<reasoning/i) &&
+                 !trimmed.match(/^<redacted/i);
+        });
+        text = filteredLines.join('\n');
+        
+        // Clean up multiple newlines and whitespace
+        text = text.replace(/\n{3,}/g, '\n\n');
+        return text.trim();
+      }
+
+      let accumulatedText = "";
+      let renderedLength = 0; // Track how much we've already rendered
+      let isStreamingComplete = false;
+      
+      // Create a persistent AudioContext for TTS
+      let audioContext = null;
+      let currentAudioSource = null; // Track current audio source to stop it if needed
+      
+      function initAudioContext() {
+        if (!audioContext) {
+          // Try to create with the desired sample rate (24kHz for Kokoro)
+          try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+          } catch (e) {
+            // Fallback to default sample rate if 24kHz not supported
+            console.warn("24kHz sample rate not supported, using default:", e);
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          // Resume immediately if suspended
+          if (audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+        }
+        return audioContext;
+      }
+      
+      function stopCurrentAudio() {
+        if (currentAudioSource) {
+          try {
+            currentAudioSource.stop();
+            currentAudioSource.disconnect();
+            currentAudioSource = null;
+            console.log("Stopped current audio playback");
+          } catch (e) {
+            console.warn("Error stopping audio:", e);
+            currentAudioSource = null;
+          }
+        }
+      }
+      
+      // Initialize audio context on first user interaction
+      document.addEventListener('click', () => {
+        initAudioContext();
+      }, { once: true });
+      
+      document.addEventListener('keydown', () => {
+        initAudioContext();
+      }, { once: true });
+
+      function appendText(text) {
+        if (!text) return;
+        accumulatedText += text;
+        
+        // Always filter before displaying
+        const filtered = filterThinking(accumulatedText);
+        
+        // Only render new content that hasn't been rendered yet
+        if (filtered.length > renderedLength) {
+          const newContent = filtered.slice(renderedLength);
+          
+          // Render new content directly (no character animation during streaming)
+          if (newContent.length > 0) {
+            renderTextDirectly(newContent);
+            renderedLength = filtered.length; // Update rendered length
+          }
+        } else if (filtered.length < renderedLength) {
+          // Content was filtered (thinking removed), rebuild entire response
+          textResponse.innerHTML = "";
+          accumulatedText = filtered; // Update accumulated to match filtered
+          renderedLength = 0; // Reset rendered length
+          renderTextDirectly(filtered);
+          renderedLength = filtered.length;
+        }
+      }
+      
+      function renderTextDirectly(text) {
+        if (!text) return;
+        
+        // Split text by citation patterns
+        // Handle both [Source: filename] and [Source N: filename] formats
+        const citationPattern = /\[Source(?:\s+\d+)?:\s*([^\]]+)\]/g;
+        const parts = [];
+        let lastIndex = 0;
+        let match;
+        
+        citationPattern.lastIndex = 0;
+        
+        while ((match = citationPattern.exec(text)) !== null) {
+          // Add text before citation
+          if (match.index > lastIndex) {
+            parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+          }
+          
+          // Add citation - extract filename (group 1)
+          const filename = match[1].trim();
+          // Skip if filename is just a number (likely a parsing error)
+          if (!/^\d+$/.test(filename)) {
+            parts.push({ type: 'citation', content: filename, fullMatch: match[0] });
+          }
+          
+          lastIndex = match.index + match[0].length;
+        }
+        
+        // Add remaining text
+        if (lastIndex < text.length) {
+          parts.push({ type: 'text', content: text.slice(lastIndex) });
+        }
+        
+        // If no citations found, just render as text
+        if (parts.length === 0 && text) {
+          parts.push({ type: 'text', content: text });
+        }
+        
+        // Render each part directly (no character animation)
+        parts.forEach(part => {
+          if (part.type === 'citation') {
+            const citationLink = document.createElement("a");
+            citationLink.className = "citation-link";
+            citationLink.textContent = `[Source: ${part.content}]`;
+            citationLink.title = `Open source document: ${part.content}`;
+            citationLink.href = `/v1/knowledge/files/${encodeURIComponent(part.content)}/download?token=${AUTH_TOKEN}`;
+            citationLink.target = "_blank";
+            citationLink.style.cssText = "color: #4ade80; text-decoration: underline; cursor: pointer; font-weight: 500; margin: 0 2px; pointer-events: auto;";
+            citationLink.onclick = (e) => {
+              e.preventDefault();
+              window.open(citationLink.href, '_blank');
+            };
+            textResponse.appendChild(citationLink);
+          } else {
+            // Render text directly with fast type-in effect
+            const textSpan = document.createElement("span");
+            const chars = part.content.split('');
+            let charIdx = 0;
+            
+            const addChars = () => {
+              if (charIdx >= chars.length) return;
+              
+              // Add multiple characters at once for speed (batch of 4-6 chars)
+              const batchSize = Math.min(5, chars.length - charIdx);
+              for (let i = 0; i < batchSize; i++) {
+                const char = chars[charIdx + i];
+                const charSpan = document.createElement("span");
+                charSpan.className = "char shimmer";
+                charSpan.textContent = char === " " ? "\u00A0" : char;
+                textSpan.appendChild(charSpan);
+                
+                setTimeout(() => {
+                  charSpan.classList.remove("shimmer");
+                  charSpan.style.color = "";
+                  charSpan.style.textShadow = "";
+                }, 100);
+              }
+              
+              charIdx += batchSize;
+              
+              // Continue with minimal delay
+              if (charIdx < chars.length) {
+                setTimeout(addChars, 0);
+              }
+            };
+            
+            textResponse.appendChild(textSpan);
+            addChars();
+          }
+        });
+      }
+
+      function processCitations(text) {
+        // Just return text as-is, citations will be rendered by renderTextWithCitations
+        return text;
+      }
+
+      function renderTextWithCitations(text) {
+        if (!text) return;
+        
+        // Split text by citation patterns and render accordingly
+        // Handle both [Source: filename] and [Source N: filename] formats
+        const citationPattern = /\[Source(?:\s+\d+)?:\s*([^\]]+)\]/g;
+        const parts = [];
+        let lastIndex = 0;
+        let match;
+        
+        // Reset regex lastIndex
+        citationPattern.lastIndex = 0;
+        
+        while ((match = citationPattern.exec(text)) !== null) {
+          // Add text before citation
+          if (match.index > lastIndex) {
+            parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+          }
+          
+          // Add citation - extract filename (group 1)
+          const filename = match[1].trim();
+          // Skip if filename is just a number (likely a parsing error)
+          if (!/^\d+$/.test(filename)) {
+            parts.push({ type: 'citation', content: filename, fullMatch: match[0] });
+          }
+          
+          lastIndex = match.index + match[0].length;
+        }
+        
+        // Add remaining text
+        if (lastIndex < text.length) {
+          parts.push({ type: 'text', content: text.slice(lastIndex) });
+        }
+        
+        // If no citations found, just render as text
+        if (parts.length === 0) {
+          parts.push({ type: 'text', content: text });
+        }
+        
+        // Render each part
+        parts.forEach(part => {
+          if (part.type === 'citation') {
+            const citationLink = document.createElement("a");
+            citationLink.className = "citation-link";
+            citationLink.textContent = `[Source: ${part.content}]`;
+            citationLink.title = `Open source document: ${part.content}`;
+            citationLink.href = `/v1/knowledge/files/${encodeURIComponent(part.content)}/download?token=${AUTH_TOKEN}`;
+            citationLink.target = "_blank";
+            citationLink.style.cssText = "color: #4ade80; text-decoration: underline; cursor: pointer; font-weight: 500; margin: 0 2px; pointer-events: auto;";
+            citationLink.onclick = (e) => {
+              e.preventDefault();
+              window.open(citationLink.href, '_blank');
+            };
+            textResponse.appendChild(citationLink);
+          } else {
+            renderTextChars(part.content);
+          }
+        });
+      }
+
+      function renderTextChars(text) {
+        if (!text) return;
+        const chars = [...text];
+        let charIndex = 0;
+        
+        const typeChar = () => {
+          if (charIndex >= chars.length) return;
+          
+          // Render multiple characters at once for faster effect (batch of 3-5 chars)
+          const batchSize = Math.min(4, chars.length - charIndex);
+          for (let i = 0; i < batchSize; i++) {
+            const char = chars[charIndex + i];
+            const span = document.createElement("span");
+            span.className = "char shimmer";
+            span.textContent = char === " " ? "\u00A0" : char;
+            textResponse.appendChild(span);
+            
+            setTimeout(() => {
+              span.classList.remove("shimmer");
+              span.style.color = "";
+              span.style.textShadow = "";
+            }, 2000);
+          }
+          
+          charIndex += batchSize;
+          
+          // Very fast typing - minimal delay for near-instant feel
+          if (charIndex < chars.length) {
+            setTimeout(typeChar, 0); // Use 0ms for requestAnimationFrame-like speed
+          }
+        };
+        
+        typeChar();
+      }
+
+      function typeText(text) {
+        const filtered = filterThinking(text);
+        textResponse.innerHTML = "";
+        accumulatedText = filtered; // Set accumulated to filtered text
+        renderedLength = 0; // Reset rendered length
+        
+        // Render with citations
+        renderTextWithCitations(filtered);
+        renderedLength = filtered.length;
+        
+        // Text complete, speak it (without citations for TTS)
+        const textWithoutCitations = filtered.replace(/\[Source:[^\]]+\]/g, "");
+        if (textWithoutCitations.trim()) {
+          speakText(textWithoutCitations);
+        }
+      }
+
+      async function generateImage(prompt) {
+        clearOutput();
+        actionBtn.disabled = true;
+        isGenerating = true;
+        document.body.classList.add("generating");
+        actionBtn.classList.add("pulsating");
+        
+        // Show loading message
+        textResponse.innerHTML = '<span class="char">Generating image... This may take a minute.</span>';
+        textResponse.style.display = "block";
+
+        // FLUX defaults: optimized for faster generation
+        const body = { 
+          model: "flux", 
+          prompt, 
+          size: "1024x1024",
+          steps: 20,  // Reduced steps for faster generation
+          guidance_scale: 3.5  // FLUX default guidance
+        };
+        
+        // Add reference image if provided (convert data URL to base64)
+        if (referenceImage) {
+          // Extract base64 data from data URL
+          const base64Data = referenceImage.includes(",") 
+            ? referenceImage.split(",")[1] 
+            : referenceImage;
+          body.image = base64Data;
+          body.image_strength = 0.8; // Default strength
+        }
+
+        try {
+          // Create an AbortController for timeout handling
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout for FLUX
+          
+          const res = await fetch("/v1/images/generations", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(err || `${res.status} ${res.statusText}`);
+          }
+          const data = await res.json();
+          const img = data.data?.[0];
+          if (img?.b64_json) {
+            const mime = img.mime_type || "image/png";
+            imageOutput.src = `data:${mime};base64,${img.b64_json}`;
+            imageWrapper.classList.add("show");
+            textResponse.style.display = "none"; // Hide loading message
+            textResponse.innerHTML = "";
+          } else {
+            throw new Error("No image returned");
+          }
+        } catch (error) {
+          textResponse.style.display = "block";
+          if (error.name === 'AbortError') {
+            textResponse.innerHTML = '<span class="char">Image generation timed out. FLUX generation can take 2-5 minutes. Please try again with a simpler prompt or smaller size.</span>';
+          } else {
+            textResponse.innerHTML = `<span class="char">${error.message || "Image generation error"}</span>`;
+          }
+          imageWrapper.classList.remove("show");
+        } finally {
+          actionBtn.disabled = false;
+          isGenerating = false;
+          document.body.classList.remove("generating");
+          actionBtn.classList.remove("pulsating");
+        }
+      }
+
+      actionBtn.addEventListener("click", handleSubmit);
+      unifiedInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          handleSubmit();
+        }
+      });
+
+      // Flower of Life Lattice Animation
+      (function() {
+        const canvas = document.getElementById("flower-canvas");
+        const ctx = canvas.getContext("2d");
+        let animationFrame = 0;
+        let time = 0;
+
+        function resizeCanvas() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+
+        function drawCircle(x, y, radius, alpha = 1) {
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.globalAlpha = alpha;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+
+        function drawFlowerOfLife(centerX, centerY, radius, timeOffset) {
+          // Classic flower of life pattern with overlapping circles
+          const circles = [];
+          
+          // Center circle
+          circles.push({ x: centerX, y: centerY, r: radius });
+          
+          // First ring - 6 circles around center (60 degrees apart)
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            circles.push({ x, y, r: radius });
+          }
+          
+          // Second ring - 6 circles at 60-degree positions
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = centerX + radius * 2 * Math.cos(angle);
+            const y = centerY + radius * 2 * Math.sin(angle);
+            circles.push({ x, y, r: radius });
+          }
+          
+          // Additional circles to form the hexagonal lattice
+          // These connect the outer circles
+          for (let i = 0; i < 6; i++) {
+            const angle1 = (Math.PI / 3) * i;
+            const angle2 = (Math.PI / 3) * (i + 1);
+            const x1 = centerX + radius * 2 * Math.cos(angle1);
+            const y1 = centerY + radius * 2 * Math.sin(angle1);
+            const x2 = centerX + radius * 2 * Math.cos(angle2);
+            const y2 = centerY + radius * 2 * Math.sin(angle2);
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+            const dist = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            if (dist > radius * 0.5) {
+              circles.push({ x: midX, y: midY, r: radius });
+            }
+          }
+          
+          // Draw all circles with morphing effect
+          const morph = 0.8 + 0.2 * Math.sin(timeOffset * 0.3);
+          const rotation = timeOffset * 0.05;
+          
+          circles.forEach((circle, idx) => {
+            const alpha = 0.15 + 0.1 * Math.sin(timeOffset * 0.4 + idx * 0.2);
+            const r = circle.r * morph;
+            
+            // Apply rotation around center
+            const dx = circle.x - centerX;
+            const dy = circle.y - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) + rotation;
+            const x = centerX + dist * Math.cos(angle);
+            const y = centerY + dist * Math.sin(angle);
+            
+            drawCircle(x, y, r, alpha);
+          });
+        }
+
+        function animate() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Green aurora gradient effect
+          const gradient = ctx.createRadialGradient(
+            canvas.width / 2,
+            canvas.height / 2,
+            0,
+            canvas.width / 2,
+            canvas.height / 2,
+            Math.max(canvas.width, canvas.height)
+          );
+          gradient.addColorStop(0, "rgba(0, 255, 170, 0.05)");
+          gradient.addColorStop(0.5, "rgba(0, 204, 102, 0.03)");
+          gradient.addColorStop(1, "rgba(0, 255, 170, 0.01)");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Set stroke style with green aurora colors
+          // Brighter when generating
+          const isGenerating = document.body.classList.contains("generating");
+          const baseGreen = isGenerating 
+            ? `rgba(0, 255, 170, 0.7)` 
+            : `rgba(0, 255, 170, 0.4)`;
+          ctx.strokeStyle = baseGreen;
+          ctx.lineWidth = isGenerating ? 1.5 : 1;
+          ctx.shadowBlur = isGenerating ? 15 : 10;
+          ctx.shadowColor = isGenerating 
+            ? "rgba(0, 255, 170, 0.8)" 
+            : "rgba(0, 255, 170, 0.5)";
+          
+          // Speed up animation when generating
+          const speedMultiplier = document.body.classList.contains("generating") ? 3 : 1;
+          const adjustedTime = time * speedMultiplier;
+          
+          // Draw tiled flower of life patterns
+          const patternSize = 150; // Reduced from 200 for closer spacing
+          const cols = Math.ceil(canvas.width / patternSize) + 2;
+          const rows = Math.ceil(canvas.height / patternSize) + 2;
+          
+          for (let row = -1; row < rows; row++) {
+            for (let col = -1; col < cols; col++) {
+              // Hexagonal tiling offset - reduced spacing multipliers
+              const offsetX = col * patternSize * 1.3; // Reduced from 1.5
+              const offsetY = row * patternSize * Math.sqrt(3) * 0.85 + (col % 2 === 0 ? 0 : patternSize * Math.sqrt(3) * 0.425); // Reduced spacing
+              const timeOffset = (row + col) * 0.3;
+              
+              // Subtle parallax movement - faster when generating
+              const parallaxX = Math.sin(adjustedTime * 0.2 + timeOffset) * 15;
+              const parallaxY = Math.cos(adjustedTime * 0.15 + timeOffset) * 10;
+              
+              drawFlowerOfLife(
+                offsetX + parallaxX,
+                offsetY + parallaxY,
+                40,
+                timeOffset + adjustedTime
+              );
+            }
+          }
+          
+          // Update time with speed multiplier
+          time += 0.008 * speedMultiplier;
+          ctx.shadowBlur = 0;
+          animationFrame = requestAnimationFrame(animate);
+        }
+
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+        animate();
+      })();
+    </script>
+  </body>
+</html>

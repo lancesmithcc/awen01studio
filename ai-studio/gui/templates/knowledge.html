@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Knowledge - AWEN01</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        font-family: "Jost", sans-serif;
+      }
+      :root {
+        color-scheme: dark;
+        font-family: "Jost", sans-serif;
+        background: #0a1a1a;
+        color: #b8ffe8;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        box-sizing: border-box;
+        position: relative;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      #flower-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 233%;
+        height: 233%;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .panel {
+        width: min(800px, 100%);
+        background: transparent;
+        border: none;
+        padding: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+      }
+      .header-links {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+      }
+      .header-link {
+        color: #6dd4a8;
+        text-decoration: none;
+        font-size: 0.9rem;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      }
+      .header-link:hover {
+        opacity: 1;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        letter-spacing: 0.2rem;
+        text-transform: uppercase;
+        font-family: "Jost", sans-serif;
+        color: #a8f5e8;
+      }
+      .upload-area {
+        border: 2px dashed #2a5a5a;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+      .upload-area:hover {
+        border-color: #4dd4c4;
+      }
+      .upload-area.dragover {
+        border-color: #00ffaa;
+        background: rgba(0, 255, 170, 0.1);
+      }
+      .file-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #2a5a5a;
+      }
+      .file-item:last-child {
+        border-bottom: none;
+      }
+      .file-info {
+        flex: 1;
+      }
+      .file-name {
+        font-weight: 500;
+        color: #b8ffe8;
+        margin-bottom: 0.25rem;
+      }
+      .file-meta {
+        font-size: 0.85rem;
+        color: #6dd4a8;
+        opacity: 0.7;
+      }
+      .file-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid #2a5a5a;
+        background: transparent;
+        color: #6dd4a8;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: "Jost", sans-serif;
+        transition: all 0.2s;
+      }
+      .btn:hover {
+        border-color: #4dd4c4;
+        color: #a8f5e8;
+      }
+      .btn-danger {
+        border-color: #5a2a2a;
+        color: #ff6d6d;
+      }
+      .btn-danger:hover {
+        border-color: #7a3a3a;
+        color: #ff8d8d;
+      }
+      input[type="file"] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="flower-canvas"></canvas>
+    <div class="panel">
+      <div class="header-row">
+        <h1>Knowledge</h1>
+        <div class="header-links">
+          <a href="/ui" class="header-link">Chat</a>
+          <a href="/memory" class="header-link">Memory</a>
+          <a href="/tweak" class="header-link">⚙</a>
+        </div>
+      </div>
+
+      <div class="upload-area" id="upload-area">
+        <p>Drag and drop files here or click to upload</p>
+        <p style="font-size: 0.85rem; opacity: 0.7; margin-top: 0.5rem;">
+          Supported: PDF, TXT, MD, DOCX
+        </p>
+        <input type="file" id="file-input" multiple accept=".pdf,.txt,.md,.docx" />
+      </div>
+
+      <div style="margin-top: 1rem; text-align: center;">
+        <button id="reindex-btn" class="btn" style="background: #4ade80; color: #000; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 500;">
+          🔄 Reindex All Files
+        </button>
+      </div>
+
+      <ul class="file-list" id="file-list">
+        <!-- Files will be loaded here -->
+      </ul>
+    </div>
+
+    <script>
+      const uploadArea = document.getElementById("upload-area");
+      const fileInput = document.getElementById("file-input");
+      const fileList = document.getElementById("file-list");
+      const AUTH_TOKEN = "awen-local";
+
+      // Load existing files
+      async function loadFiles() {
+        try {
+          const res = await fetch("/v1/knowledge/files", {
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            const files = await res.json();
+            renderFiles(files);
+          }
+        } catch (error) {
+          console.error("Failed to load files:", error);
+        }
+      }
+
+      function renderFiles(files) {
+        fileList.innerHTML = "";
+        if (files.length === 0) {
+          fileList.innerHTML = '<li style="padding: 2rem; text-align: center; opacity: 0.7;">No knowledge files uploaded yet</li>';
+          return;
+        }
+        files.forEach(file => {
+          const li = document.createElement("li");
+          li.className = "file-item";
+          // Use filename for deletion to avoid JavaScript precision issues with large integers
+          const fileName = escapeHtml(file.file_name);
+          li.innerHTML = `
+            <div class="file-info">
+              <div class="file-name">${fileName}</div>
+              <div class="file-meta">${file.file_type || 'Unknown'} • ${formatDate(file.updated_at)}</div>
+            </div>
+            <div class="file-actions">
+              <button class="btn btn-danger" onclick="deleteFile('${fileName}')">Delete</button>
+            </div>
+          `;
+          fileList.appendChild(li);
+        });
+      }
+
+      async function deleteFile(fileName) {
+        if (!confirm("Delete this knowledge file?")) return;
+        // Use filename-based deletion to avoid precision issues
+        const encodedFileName = encodeURIComponent(fileName);
+        console.log("Deleting file:", fileName);
+        try {
+          const res = await fetch(`/v1/knowledge/files/by-name/${encodedFileName}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            loadFiles();
+          } else {
+            const errorText = await res.text().catch(() => "Unknown error");
+            let errorMessage = errorText;
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage = errorData.detail || errorText;
+            } catch (e) {
+              // Not JSON, use errorText as-is
+            }
+            console.error("Delete failed:", errorMessage);
+            alert("Failed to delete file: " + errorMessage);
+          }
+        } catch (error) {
+          console.error("Delete error:", error);
+          alert("Error deleting file: " + error.message);
+        }
+      }
+
+      async function uploadFiles(files) {
+        if (files.length === 0) return;
+        
+        // Show loading state
+        const uploadArea = document.getElementById("upload-area");
+        const originalText = uploadArea.innerHTML;
+        uploadArea.innerHTML = '<p>Uploading files... Please wait.</p>';
+        uploadArea.style.pointerEvents = 'none';
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("file", file);
+          
+          try {
+            const res = await fetch("/v1/knowledge/upload", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${AUTH_TOKEN}`
+              },
+              body: formData
+            });
+            
+            if (res.ok) {
+              successCount++;
+            } else {
+              const error = await res.text().catch(() => "Unknown error");
+              console.error(`Failed to upload ${file.name}:`, error);
+              errorCount++;
+              alert(`Failed to upload ${file.name}: ${error}`);
+            }
+          } catch (error) {
+            console.error(`Error uploading ${file.name}:`, error);
+            errorCount++;
+            alert(`Error uploading ${file.name}: ${error.message}`);
+          }
+        }
+        
+        // Restore upload area
+        uploadArea.innerHTML = originalText;
+        uploadArea.style.pointerEvents = 'auto';
+        
+        // Show success message
+        if (successCount > 0) {
+          const message = errorCount > 0 
+            ? `Uploaded ${successCount} file(s). ${errorCount} failed.`
+            : `Successfully uploaded ${successCount} file(s).`;
+          console.log(message);
+        }
+        
+        loadFiles();
+      }
+
+      // Reindex button handler
+      const reindexBtn = document.getElementById("reindex-btn");
+      reindexBtn.addEventListener("click", async () => {
+        if (!confirm("Reindex all knowledge files? This will process all files and add them to the vector database.")) return;
+        
+        reindexBtn.disabled = true;
+        reindexBtn.textContent = "⏳ Reindexing...";
+        
+        try {
+          const res = await fetch("/v1/knowledge/reindex", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            const reindexed = data.reindexed !== undefined ? data.reindexed : 0;
+            const cached = data.cached !== undefined ? data.cached : 0;
+            const message = data.message || `Reindexed ${reindexed} files, cached ${cached} files`;
+            let alertMessage = `Reindexing complete!\n\n${message}\nErrors: ${data.errors}`;
+            if (data.note) {
+              alertMessage += `\n\n${data.note}`;
+            }
+            alert(alertMessage);
+            loadFiles();
+          } else {
+            const error = await res.text().catch(() => "Unknown error");
+            alert("Reindexing failed: " + error);
+          }
+        } catch (error) {
+          console.error("Reindex error:", error);
+          alert("Error reindexing: " + error.message);
+        } finally {
+          reindexBtn.disabled = false;
+          reindexBtn.textContent = "🔄 Reindex All Files";
+        }
+      });
+
+      uploadArea.addEventListener("click", () => fileInput.click());
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+      });
+      uploadArea.addEventListener("dragleave", () => {
+        uploadArea.classList.remove("dragover");
+      });
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        uploadFiles(Array.from(e.dataTransfer.files));
+      });
+      fileInput.addEventListener("change", (e) => {
+        uploadFiles(Array.from(e.target.files));
+        e.target.value = "";
+      });
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function formatDate(dateString) {
+        if (!dateString) return "Unknown";
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+      }
+
+      // Initialize canvas animation (same as chat.html)
+      const canvas = document.getElementById("flower-canvas");
+      const ctx = canvas.getContext("2d");
+      let animationId = null;
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
+        // Simple flower of life pattern
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = Math.min(canvas.width, canvas.height) * 0.3;
+        const time = Date.now() * 0.001;
+        
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI * 2 * i) / 6 + time * 0.1;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          ctx.beginPath();
+          ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        animationId = requestAnimationFrame(animate);
+      }
+
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+      animate();
+
+      loadFiles();
+    </script>
+  </body>
+</html>
+

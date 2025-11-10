@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Memory - AWEN01</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        font-family: "Jost", sans-serif;
+      }
+      :root {
+        color-scheme: dark;
+        font-family: "Jost", sans-serif;
+        background: #0a1a1a;
+        color: #b8ffe8;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 2rem;
+        box-sizing: border-box;
+        position: relative;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      #flower-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 233%;
+        height: 233%;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .panel {
+        width: min(1000px, 100%);
+        background: transparent;
+        border: none;
+        padding: 2rem;
+        position: relative;
+        z-index: 1;
+      }
+      .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+      }
+      .header-links {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+      }
+      .header-link {
+        color: #6dd4a8;
+        text-decoration: none;
+        font-size: 0.9rem;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      }
+      .header-link:hover {
+        opacity: 1;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        letter-spacing: 0.2rem;
+        text-transform: uppercase;
+        font-family: "Jost", sans-serif;
+        color: #a8f5e8;
+      }
+      .tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid #2a5a5a;
+      }
+      .tab {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: none;
+        color: #6dd4a8;
+        cursor: pointer;
+        font-family: "Jost", sans-serif;
+        font-size: 0.9rem;
+        opacity: 0.6;
+        transition: all 0.2s;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      .tab:hover {
+        opacity: 1;
+      }
+      .tab.active {
+        opacity: 1;
+        color: #a8f5e8;
+        border-bottom-color: #4dd4c4;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .memory-list, .chat-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .memory-item, .chat-item {
+        padding: 1.5rem;
+        border-bottom: 1px solid #2a5a5a;
+        margin-bottom: 1rem;
+        background: rgba(42, 90, 90, 0.1);
+        border-radius: 8px;
+      }
+      .memory-item:last-child, .chat-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+      .memory-content, .chat-content {
+        color: #b8ffe8;
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+      }
+      .chat-user {
+        color: #6dd4a8;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+      }
+      .chat-assistant {
+        color: #b8ffe8;
+        margin-left: 1rem;
+        margin-bottom: 0.5rem;
+      }
+      .memory-meta, .chat-meta {
+        font-size: 0.85rem;
+        color: #6dd4a8;
+        opacity: 0.7;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+      }
+      .notable-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: rgba(109, 212, 168, 0.2);
+        color: #6dd4a8;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+      }
+      .btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid #2a5a5a;
+        background: transparent;
+        color: #6dd4a8;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: "Jost", sans-serif;
+        transition: all 0.2s;
+        font-size: 0.85rem;
+      }
+      .btn:hover {
+        border-color: #4dd4c4;
+        color: #a8f5e8;
+      }
+      .btn-danger {
+        border-color: #5a2a2a;
+        color: #ff6d6d;
+      }
+      .btn-danger:hover {
+        border-color: #7a3a3a;
+        color: #ff8d8d;
+      }
+      .btn-edit {
+        border-color: #2a5a5a;
+        color: #6dd4a8;
+        margin-right: 0.5rem;
+      }
+      .btn-edit:hover {
+        border-color: #4dd4c4;
+        color: #a8f5e8;
+      }
+      .memory-content-editable {
+        background: rgba(42, 90, 90, 0.3);
+        border: 1px solid #2a5a5a;
+        border-radius: 4px;
+        padding: 0.5rem;
+        color: #b8ffe8;
+        font-family: "Jost", sans-serif;
+        font-size: 1rem;
+        width: 100%;
+        min-height: 60px;
+        resize: vertical;
+        margin-bottom: 0.5rem;
+      }
+      .memory-content-editable:focus {
+        outline: none;
+        border-color: #4dd4c4;
+      }
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .delete-all-section {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: rgba(90, 42, 42, 0.1);
+        border-radius: 8px;
+        border: 1px solid #5a2a2a;
+      }
+      .empty-state {
+        padding: 3rem;
+        text-align: center;
+        opacity: 0.7;
+        color: #6dd4a8;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="flower-canvas"></canvas>
+    <div class="panel">
+      <div class="header-row">
+        <h1>Memory</h1>
+        <div class="header-links">
+          <a href="/" class="header-link">Chat</a>
+          <a href="/knowledge" class="header-link">Knowledge</a>
+          <a href="/tweak" class="header-link">⚙</a>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('notable')">Notable Memories</button>
+        <button class="tab" onclick="switchTab('chat')">Chat History</button>
+        <button class="tab" onclick="switchTab('memories')">All Memories</button>
+      </div>
+
+      <div id="notable-tab" class="tab-content active">
+        <div class="delete-all-section">
+          <button class="btn btn-danger" onclick="deleteAllNotableMemories()">🗑️ Delete All Notable Memories</button>
+        </div>
+        <ul class="memory-list" id="notable-list">
+          <!-- Notable memories will be loaded here -->
+        </ul>
+      </div>
+
+      <div id="chat-tab" class="tab-content">
+        <div class="delete-all-section">
+          <button class="btn btn-danger" onclick="deleteAllChatHistory()">🗑️ Delete All Chat History</button>
+        </div>
+        <ul class="chat-list" id="chat-list">
+          <!-- Chat history will be loaded here -->
+        </ul>
+      </div>
+
+      <div id="memories-tab" class="tab-content">
+        <div class="delete-all-section">
+          <button class="btn btn-danger" onclick="deleteAllMemories()">🗑️ Delete All Memories</button>
+        </div>
+        <ul class="memory-list" id="memory-list">
+          <!-- All memories will be loaded here -->
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      const AUTH_TOKEN = "awen-local";
+
+      function switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+        
+        // Load data for the active tab
+        if (tabName === 'notable') {
+          loadNotableMemories();
+        } else if (tabName === 'chat') {
+          loadChatHistory();
+        } else if (tabName === 'memories') {
+          loadMemories();
+        }
+      }
+
+      async function loadNotableMemories() {
+        const list = document.getElementById("notable-list");
+        try {
+          const res = await fetch("/v1/memory/notable?limit=50", {
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            const memories = await res.json();
+            renderNotableMemories(memories);
+          } else {
+            list.innerHTML = '<li class="empty-state">Failed to load notable memories</li>';
+          }
+        } catch (error) {
+          console.error("Failed to load notable memories:", error);
+          list.innerHTML = '<li class="empty-state">Failed to load notable memories</li>';
+        }
+      }
+
+      async function loadChatHistory() {
+        const list = document.getElementById("chat-list");
+        try {
+          const res = await fetch("/v1/memory/chat-history?limit=100", {
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            const history = await res.json();
+            renderChatHistory(history);
+          } else {
+            list.innerHTML = '<li class="empty-state">Failed to load chat history</li>';
+          }
+        } catch (error) {
+          console.error("Failed to load chat history:", error);
+          list.innerHTML = '<li class="empty-state">Failed to load chat history</li>';
+        }
+      }
+
+      async function loadMemories() {
+        const list = document.getElementById("memory-list");
+        try {
+          const res = await fetch("/v1/memory/list?limit=100", {
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            const memories = await res.json();
+            renderMemories(memories);
+          } else {
+            list.innerHTML = '<li class="empty-state">Failed to load memories</li>';
+          }
+        } catch (error) {
+          console.error("Failed to load memories:", error);
+          list.innerHTML = '<li class="empty-state">Failed to load memories</li>';
+        }
+      }
+
+      function renderNotableMemories(memories) {
+        const list = document.getElementById("notable-list");
+        list.innerHTML = "";
+        if (memories.length === 0) {
+          list.innerHTML = '<li class="empty-state">No notable memories detected yet</li>';
+          return;
+        }
+        memories.forEach(memory => {
+          const li = document.createElement("li");
+          li.className = "memory-item";
+          li.id = `memory-${memory.id}`;
+          
+          const isEditing = memory.editing || false;
+          
+          if (isEditing) {
+            li.innerHTML = `
+              <textarea class="memory-content-editable" id="edit-${memory.id}">${escapeHtml(memory.content)}</textarea>
+              <div class="memory-meta">
+                <span>${formatDate(memory.created_at)} <span class="notable-badge">Notable</span></span>
+                <div class="action-buttons">
+                  <button class="btn btn-edit" onclick="saveMemory(${memory.id})">Save</button>
+                  <button class="btn" onclick="cancelEditMemory(${memory.id})">Cancel</button>
+                  <button class="btn btn-danger" onclick="deleteNotableMemory(${memory.id})">Delete</button>
+                </div>
+              </div>
+            `;
+          } else {
+            li.innerHTML = `
+              <div class="memory-content">${escapeHtml(memory.content)}</div>
+              <div class="memory-meta">
+                <span>${formatDate(memory.created_at)} <span class="notable-badge">Notable</span></span>
+                <div class="action-buttons">
+                  <button class="btn btn-edit" onclick="editMemory(${memory.id})">Edit</button>
+                  <button class="btn btn-danger" onclick="deleteNotableMemory(${memory.id})">Delete</button>
+                </div>
+              </div>
+            `;
+          }
+          list.appendChild(li);
+        });
+      }
+
+      function renderChatHistory(history) {
+        const list = document.getElementById("chat-list");
+        list.innerHTML = "";
+        if (history.length === 0) {
+          list.innerHTML = '<li class="empty-state">No chat history yet</li>';
+          return;
+        }
+        history.forEach(chat => {
+          const li = document.createElement("li");
+          li.className = "chat-item";
+          li.innerHTML = `
+            <div class="chat-user">User: ${escapeHtml(chat.user_message)}</div>
+            <div class="chat-assistant">Assistant: ${escapeHtml(chat.assistant_message)}</div>
+            <div class="chat-meta">
+              <span>${formatDate(chat.created_at)}</span>
+              <button class="btn btn-danger" onclick="deleteChatHistory(${chat.id})">Delete</button>
+            </div>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      function renderMemories(memories) {
+        const list = document.getElementById("memory-list");
+        list.innerHTML = "";
+        if (memories.length === 0) {
+          list.innerHTML = '<li class="empty-state">No memories stored yet</li>';
+          return;
+        }
+        memories.forEach(memory => {
+          const li = document.createElement("li");
+          li.className = "memory-item";
+          li.innerHTML = `
+            <div class="memory-content">${escapeHtml(memory.content)}</div>
+            <div class="memory-meta">
+              <span>${formatDate(memory.created_at)}</span>
+              <button class="btn btn-danger" onclick="deleteMemory(${memory.id})">Delete</button>
+            </div>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      async function deleteAllNotableMemories() {
+        if (!confirm("Are you sure you want to delete ALL notable memories? This cannot be undone.")) return;
+        try {
+          const res = await fetch("/v1/memory/notable/all", {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            alert(`Deleted ${data.deleted_count || 0} notable memories`);
+            loadNotableMemories();
+          } else {
+            const error = await res.json();
+            alert("Failed to delete all notable memories: " + (error.detail || "Unknown error"));
+          }
+        } catch (error) {
+          alert("Error deleting all notable memories: " + error.message);
+        }
+      }
+
+      async function deleteAllMemories() {
+        if (!confirm("Are you sure you want to delete ALL memories? This cannot be undone.")) return;
+        try {
+          const res = await fetch("/v1/memory/all", {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            alert(`Deleted ${data.deleted_count || 0} memories`);
+            loadMemories();
+          } else {
+            const error = await res.json();
+            alert("Failed to delete all memories: " + (error.detail || "Unknown error"));
+          }
+        } catch (error) {
+          alert("Error deleting all memories: " + error.message);
+        }
+      }
+
+      async function deleteAllChatHistory() {
+        if (!confirm("Are you sure you want to delete ALL chat history? This cannot be undone.")) return;
+        try {
+          const res = await fetch("/v1/memory/chat-history/all", {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            alert(`Deleted ${data.deleted_count || 0} chat history entries`);
+            loadChatHistory();
+          } else {
+            const error = await res.json();
+            alert("Failed to delete all chat history: " + (error.detail || "Unknown error"));
+          }
+        } catch (error) {
+          alert("Error deleting all chat history: " + error.message);
+        }
+      }
+
+      async function editMemory(memoryId) {
+        // Reload memories with editing flag
+        const memories = await fetch("/v1/memory/notable?limit=50", {
+          headers: { Authorization: `Bearer ${AUTH_TOKEN}` }
+        }).then(r => r.json());
+        
+        const memory = memories.find(m => m.id === memoryId);
+        if (memory) {
+          memory.editing = true;
+          renderNotableMemories(memories);
+        }
+      }
+
+      async function saveMemory(memoryId) {
+        const textarea = document.getElementById(`edit-${memoryId}`);
+        const newContent = textarea.value.trim();
+        
+        if (!newContent) {
+          alert("Memory content cannot be empty");
+          return;
+        }
+        
+        try {
+          const res = await fetch(`/v1/memory/${memoryId}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ content: newContent })
+          });
+          
+          if (res.ok) {
+            loadNotableMemories();
+          } else {
+            const error = await res.json();
+            alert("Failed to update memory: " + (error.detail || "Unknown error"));
+          }
+        } catch (error) {
+          alert("Error updating memory: " + error.message);
+        }
+      }
+
+      function cancelEditMemory(memoryId) {
+        loadNotableMemories();
+      }
+
+      async function deleteNotableMemory(memoryId) {
+        if (!confirm("Delete this notable memory?")) return;
+        try {
+          const res = await fetch(`/v1/memory/${memoryId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            loadNotableMemories();
+          } else {
+            alert("Failed to delete memory");
+          }
+        } catch (error) {
+          alert("Error deleting memory: " + error.message);
+        }
+      }
+
+      async function deleteMemory(memoryId) {
+        if (!confirm("Delete this memory?")) return;
+        try {
+          const res = await fetch(`/v1/memory/${memoryId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            loadMemories();
+          } else {
+            alert("Failed to delete memory");
+          }
+        } catch (error) {
+          alert("Error deleting memory: " + error.message);
+        }
+      }
+
+      async function deleteChatHistory(chatId) {
+        if (!confirm("Delete this chat entry?")) return;
+        try {
+          const res = await fetch(`/v1/memory/chat-history/${chatId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${AUTH_TOKEN}`
+            }
+          });
+          if (res.ok) {
+            loadChatHistory();
+          } else {
+            alert("Failed to delete chat entry");
+          }
+        } catch (error) {
+          alert("Error deleting chat entry: " + error.message);
+        }
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function formatDate(dateString) {
+        if (!dateString) return "Unknown";
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+      }
+
+      // Initialize canvas animation (same as chat.html)
+      const canvas = document.getElementById("flower-canvas");
+      const ctx = canvas.getContext("2d");
+      let animationId = null;
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 1;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = Math.min(canvas.width, canvas.height) * 0.3;
+        const time = Date.now() * 0.001;
+        
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI * 2 * i) / 6 + time * 0.1;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          ctx.beginPath();
+          ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        
+        animationId = requestAnimationFrame(animate);
+      }
+
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+      animate();
+
+      // Load initial data
+      loadNotableMemories();
+    </script>
+  </body>
+</html>
