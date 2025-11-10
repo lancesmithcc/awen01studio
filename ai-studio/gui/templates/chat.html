@@ -86,6 +86,8 @@
         flex-direction: column;
         align-items: center;
         width: 100%;
+        max-width: 888px;
+        box-sizing: border-box;
       }
       .title-section {
         margin-bottom: 2rem;
@@ -295,11 +297,12 @@
       .response {
         margin-top: 2rem;
         min-height: 0;
-        overflow: visible;
+        overflow-x: hidden;
+        overflow-y: visible;
         font-size: 1.05rem;
         line-height: 1.5;
         color: #a8f5e8;
-        white-space: pre-wrap;
+        white-space: normal;
         word-wrap: break-word;
         overflow-wrap: break-word;
         word-break: normal;
@@ -307,6 +310,10 @@
         padding-top: 1rem;
         font-family: "Jost", sans-serif;
         display: none;
+        max-width: 888px;
+        width: 100%;
+        margin: 0 auto;
+        box-sizing: border-box;
       }
       .response:not(:empty) {
         display: block;
@@ -317,6 +324,7 @@
         display: inline;
         word-break: normal;
         white-space: normal;
+        overflow-wrap: normal;
       }
       .response .char.shimmer {
         animation: shimmer 2s infinite;
@@ -1078,33 +1086,28 @@
             const addChars = () => {
               if (charIdx >= chars.length) return;
               
-              // Add multiple characters at once for speed (batch of 4-6 chars)
-              const batchSize = Math.min(5, chars.length - charIdx);
+              // Add multiple characters at once for speed (batch of 3-4 chars)
+              const batchSize = Math.min(3, chars.length - charIdx);
               for (let i = 0; i < batchSize; i++) {
                 const char = chars[charIdx + i];
                 const charSpan = document.createElement("span");
                 charSpan.className = "char shimmer";
-                // Preserve spaces and prevent word breaking
-                if (char === " ") {
-                  charSpan.textContent = "\u00A0"; // Non-breaking space
-                  charSpan.style.whiteSpace = "pre";
-                } else {
-                  charSpan.textContent = char;
-                }
+                // Use regular spaces for natural word wrapping
+                charSpan.textContent = char;
                 textSpan.appendChild(charSpan);
                 
                 setTimeout(() => {
                   charSpan.classList.remove("shimmer");
                   charSpan.style.color = "";
                   charSpan.style.textShadow = "";
-                }, 100);
+                }, 500);
               }
               
               charIdx += batchSize;
               
-              // Continue with minimal delay
+              // Continue with small delay for visible type-in effect
               if (charIdx < chars.length) {
-                setTimeout(addChars, 0);
+                setTimeout(addChars, 15);
               }
             };
             
@@ -1187,33 +1190,28 @@
         const typeChar = () => {
           if (charIndex >= chars.length) return;
           
-          // Render multiple characters at once for faster effect (batch of 3-5 chars)
-          const batchSize = Math.min(4, chars.length - charIndex);
+          // Render multiple characters at once for faster effect (batch of 2-3 chars)
+          const batchSize = Math.min(3, chars.length - charIndex);
           for (let i = 0; i < batchSize; i++) {
             const char = chars[charIndex + i];
             const span = document.createElement("span");
             span.className = "char shimmer";
-            // Preserve spaces and prevent word breaking
-            if (char === " ") {
-              span.textContent = "\u00A0"; // Non-breaking space
-              span.style.whiteSpace = "pre";
-            } else {
-              span.textContent = char;
-            }
+            // Use regular spaces for natural word wrapping
+            span.textContent = char;
             textResponse.appendChild(span);
             
             setTimeout(() => {
               span.classList.remove("shimmer");
               span.style.color = "";
               span.style.textShadow = "";
-            }, 2000);
+            }, 500);
           }
           
           charIndex += batchSize;
           
-          // Very fast typing - minimal delay for near-instant feel
+          // Fast typing with visible effect - small delay between batches
           if (charIndex < chars.length) {
-            setTimeout(typeChar, 0); // Use 0ms for requestAnimationFrame-like speed
+            setTimeout(typeChar, 15);
           }
         };
         
