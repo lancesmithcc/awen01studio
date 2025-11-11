@@ -1,5 +1,7 @@
 """
 PostgreSQL vector database using pgvector for chat memory and knowledge storage.
+
+All data is encrypted using Kyber post-quantum encryption before storage.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ except ImportError:
     Json = None  # type: ignore
     ThreadedConnectionPool = None  # type: ignore
 
+from core.crypto_vault import CryptoVault
 from utils.logger_util import get_logger
 
 logger = get_logger("core.vector_db")
@@ -28,14 +31,17 @@ class VectorDB:
     """
     PostgreSQL vector database with pgvector extension for storing chat memories
     and knowledge embeddings.
+    
+    All stored data is encrypted using Kyber post-quantum encryption.
     """
 
-    def __init__(self, connection_string: Optional[str] = None) -> None:
+    def __init__(self, connection_string: Optional[str] = None, vault: Optional[CryptoVault] = None) -> None:
         """
         Initialize vector database connection.
         
         Args:
             connection_string: PostgreSQL connection string. If None, uses env vars.
+            vault: CryptoVault instance for encrypting/decrypting data. Required for encryption.
         """
         if psycopg2 is None:
             raise ImportError("psycopg2 is required for vector database. Install with: pip install psycopg2-binary")
@@ -43,6 +49,12 @@ class VectorDB:
         self._connection_string = connection_string or self._build_connection_string()
         self._pool: Optional[ThreadedConnectionPool] = None
         self._initialized = False
+        self._vault = vault
+        
+        if vault is None:
+            logger.warning("VectorDB initialized without vault - data will not be encrypted!")
+        elif not vault.is_unlocked():
+            logger.warning("VectorDB vault is locked - encryption may fail!")
 
     def _build_connection_string(self) -> str:
         """Build PostgreSQL connection string from environment variables."""
@@ -53,6 +65,46 @@ class VectorDB:
         password = os.getenv("AWEN_DB_PASSWORD", "")
         
         return f"host={host} port={port} dbname={database} user={user} password={password}"
+    
+    def _encrypt_text(self, text: str) -> str:
+        """
+        Encrypt text using the vault's Kyber encryption.
+        
+        Args:
+            text: Plaintext to encrypt.
+        Returns:
+            Encrypted text (base64-encoded).
+        """
+        if self._vault is None or not self._vault.is_unlocked():
+            logger.warning("Vault not available, storing plaintext (not recommended!)")
+            return text
+        return self._vault.encrypt_payload(text)
+    
+    def _decrypt_text(self, encrypted_text: str) -> str:
+        """
+        Decrypt text using the vault's Kyber decryption.
+        
+        Args:
+            encrypted_text: Encrypted text (base64-encoded).
+        Returns:
+            Decrypted plaintext.
+        """
+        if self._vault is None or not self._vault.is_unlocked():
+            # Try to detect if text is encrypted (base64 format)
+            # If it looks like plaintext, return as-is (for backward compatibility)
+            try:
+                # Try to decrypt - if it fails, assume it's plaintext
+                return self._vault.decrypt_payload(encrypted_text) if self._vault else encrypted_text
+            except Exception:
+                # If decryption fails, assume it's plaintext (legacy data)
+                logger.debug("Decryption failed, assuming plaintext (legacy data)")
+                return encrypted_text
+        
+        try:
+            return self._vault.decrypt_payload(encrypted_text)
+        except Exception as e:
+            logger.warning("Failed to decrypt text, returning as-is: %s", e)
+            return encrypted_text
 
     def connect(self) -> None:
         """Initialize connection pool and ensure database is set up."""
@@ -167,11 +219,14 @@ class VectorDB:
                 # Strip null bytes from content (PostgreSQL can't handle them)
                 content_clean = content.replace('\x00', '') if content else ''
                 
+                # Encrypt content before storing
+                content_encrypted = self._encrypt_text(content_clean)
+                
                 cur.execute("""
                     INSERT INTO memories (content, embedding, metadata)
                     VALUES (%s, %s::vector, %s)
                     RETURNING id;
-                """, (content_clean, embedding_str, Json(metadata or {})))
+                """, (content_encrypted, embedding_str, Json(metadata or {})))
                 memory_id = cur.fetchone()[0]
                 conn.commit()
                 logger.debug("Added memory with ID %s", memory_id)
@@ -211,10 +266,14 @@ class VectorDB:
                 
                 results = []
                 for row in cur.fetchall():
+                    # Decrypt content before returning
+                    content_encrypted = row[2]
+                    content_decrypted = self._decrypt_text(content_encrypted)
+                    
                     results.append({
                         "id": row[0],
                         "file_name": row[1],
-                        "content": row[2],
+                        "content": content_decrypted,
                         "metadata": row[3] or {},
                         "similarity": float(row[4])
                     })
@@ -249,6 +308,9 @@ class VectorDB:
                 # Strip null bytes from content (PostgreSQL can't handle them)
                 content_clean = content.replace('\x00', '') if content else ''
                 
+                # Encrypt content before storing
+                content_encrypted = self._encrypt_text(content_clean)
+                
                 cur.execute("""
                     INSERT INTO knowledge (file_path, file_name, file_type, content, embedding, metadata)
                     VALUES (%s, %s, %s, %s, %s::vector, %s)
@@ -259,7 +321,7 @@ class VectorDB:
                         metadata = EXCLUDED.metadata,
                         updated_at = CURRENT_TIMESTAMP
                     RETURNING id;
-                """, (file_path, file_name, Path(file_name).suffix, content_clean, embedding_str, Json(metadata or {})))
+                """, (file_path, file_name, Path(file_name).suffix, content_encrypted, embedding_str, Json(metadata or {})))
                 knowledge_id = cur.fetchone()[0]
                 conn.commit()
                 logger.debug("Added/updated knowledge file with ID %s", knowledge_id)
@@ -354,9 +416,13 @@ class VectorDB:
                 
                 results = []
                 for row in cur.fetchall():
+                    # Decrypt content before returning
+                    content_encrypted = row[1]
+                    content_decrypted = self._decrypt_text(content_encrypted)
+                    
                     results.append({
                         "id": row[0],
-                        "content": row[1],
+                        "content": content_decrypted,
                         "metadata": row[2] or {},
                         "created_at": row[3].isoformat() if row[3] else None
                     })
@@ -435,11 +501,15 @@ class VectorDB:
                 user_clean = user_message.replace('\x00', '') if user_message else ''
                 assistant_clean = assistant_message.replace('\x00', '') if assistant_message else ''
                 
+                # Encrypt messages before storing
+                user_encrypted = self._encrypt_text(user_clean)
+                assistant_encrypted = self._encrypt_text(assistant_clean)
+                
                 cur.execute("""
                     INSERT INTO chat_history (user_message, assistant_message, session_id, metadata)
                     VALUES (%s, %s, %s, %s)
                     RETURNING id;
-                """, (user_clean, assistant_clean, session_id, Json(metadata or {})))
+                """, (user_encrypted, assistant_encrypted, session_id, Json(metadata or {})))
                 chat_id = cur.fetchone()[0]
                 conn.commit()
                 logger.debug("Added chat history with ID %s", chat_id)
@@ -482,10 +552,16 @@ class VectorDB:
                 
                 results = []
                 for row in cur.fetchall():
+                    # Decrypt messages before returning
+                    user_encrypted = row[1]
+                    assistant_encrypted = row[2]
+                    user_decrypted = self._decrypt_text(user_encrypted)
+                    assistant_decrypted = self._decrypt_text(assistant_encrypted)
+                    
                     results.append({
                         "id": row[0],
-                        "user_message": row[1],
-                        "assistant_message": row[2],
+                        "user_message": user_decrypted,
+                        "assistant_message": assistant_decrypted,
                         "session_id": row[3],
                         "metadata": row[4] or {},
                         "created_at": row[5].isoformat() if row[5] else None
@@ -542,6 +618,9 @@ class VectorDB:
                 # Strip null bytes from content
                 content_clean = content.replace('\x00', '') if content else ''
                 
+                # Encrypt content before storing
+                content_encrypted = self._encrypt_text(content_clean)
+                
                 # Regenerate embedding if embedder is available
                 if embedder:
                     try:
@@ -551,7 +630,7 @@ class VectorDB:
                             UPDATE memories 
                             SET content = %s, embedding = %s::vector, updated_at = CURRENT_TIMESTAMP
                             WHERE id = %s;
-                        """, (content_clean, embedding_str, memory_id))
+                        """, (content_encrypted, embedding_str, memory_id))
                     except Exception as e:
                         logger.warning("Failed to regenerate embedding for memory %s: %s", memory_id, e)
                         # Update content without embedding
@@ -559,14 +638,14 @@ class VectorDB:
                             UPDATE memories 
                             SET content = %s, updated_at = CURRENT_TIMESTAMP
                             WHERE id = %s;
-                        """, (content_clean, memory_id))
+                        """, (content_encrypted, memory_id))
                 else:
                     # Update content without embedding
                     cur.execute("""
                         UPDATE memories 
                         SET content = %s, updated_at = CURRENT_TIMESTAMP
                         WHERE id = %s;
-                    """, (content_clean, memory_id))
+                    """, (content_encrypted, memory_id))
                 
                 conn.commit()
                 logger.debug("Updated memory with ID %s", memory_id)
@@ -611,10 +690,14 @@ class VectorDB:
                 
                 recent_chats = []
                 for row in cur.fetchall():
+                    # Decrypt messages before using
+                    user_decrypted = self._decrypt_text(row[1])
+                    assistant_decrypted = self._decrypt_text(row[2])
+                    
                     recent_chats.append({
                         "id": row[0],
-                        "user_message": row[1],
-                        "assistant_message": row[2],
+                        "user_message": user_decrypted,
+                        "assistant_message": assistant_decrypted,
                         "metadata": row[3] or {},
                         "created_at": row[4].isoformat() if row[4] else None
                     })

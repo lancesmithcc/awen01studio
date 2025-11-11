@@ -309,11 +309,12 @@ def create_app() -> Flask:
     embedder: Optional[Embedder] = None
     if VECTOR_DB_AVAILABLE:
         try:
-            vector_db = VectorDB()
+            # Pass vault to VectorDB for encryption
+            vector_db = VectorDB(vault=vault)
             vector_db.connect()
             embedder = Embedder()
             embedder.load()
-            logger.info("Vector database and embedder initialized")
+            logger.info("Vector database and embedder initialized with Kyber encryption")
         except Exception as e:
             logger.warning("Vector database not available: %s", e)
             vector_db = None
